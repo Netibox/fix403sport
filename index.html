@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="origin">
+    <title>Live Stream Player</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 960px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7, #f107a3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #a0a0c0;
+            font-size: 0.95rem;
+        }
+
+        .player-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            background: #000;
+            aspect-ratio: 16/9;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.7);
+            z-index: 10;
+            transition: opacity 0.3s;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #a0a0c0;
+            font-size: 0.9rem;
+        }
+
+        .error-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.85);
+            z-index: 20;
+        }
+
+        .error-overlay.show {
+            display: flex;
+        }
+
+        .error-icon {
+            font-size: 3rem;
+            color: #ff4757;
+            margin-bottom: 15px;
+        }
+
+        .error-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .error-desc {
+            color: #a0a0c0;
+            font-size: 0.85rem;
+            text-align: center;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+
+        .controls-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            background: rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+
+        .btn.primary:hover {
+            background: linear-gradient(135deg, #5a6fd6 0%, #6a4190 100%);
+        }
+
+        .status-badge {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: #a0a0c0;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2ed573;
+            box-shadow: 0 0 8px #2ed573;
+        }
+
+        .status-dot.offline {
+            background: #ff4757;
+            box-shadow: 0 0 8px #ff4757;
+        }
+
+        .status-dot.loading {
+            background: #ffa502;
+            box-shadow: 0 0 8px #ffa502;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .info-section {
+            margin-top: 25px;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 24px;
+        }
+
+        .info-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-section h3 i {
+            color: #00d4ff;
+        }
+
+        .url-box {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 14px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: #00d4ff;
+            word-break: break-all;
+            margin-bottom: 16px;
+        }
+
+        .tips {
+            display: grid;
+            gap: 12px;
+        }
+
+        .tip-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            border-left: 3px solid #667eea;
+        }
+
+        .tip-item i {
+            color: #667eea;
+            margin-top: 2px;
+            font-size: 0.9rem;
+        }
+
+        .tip-item div {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #c0c0d0;
+        }
+
+        .tip-item strong {
+            color: #fff;
+        }
+
+        .quality-selector {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .quality-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #a0a0c0;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .quality-btn:hover, .quality-btn.active {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 { font-size: 1.5rem; }
+            .controls-bar { justify-content: center; }
+            .status-badge { width: 100%; justify-content: center; margin-top: 8px; }
+            .quality-selector { width: 100%; justify-content: center; margin-top: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-satellite-dish"></i> Live Stream Player</h1>
+            <p>เล่นสตรีม M3U8 พร้อมรองรับการตั้งค่าเพื่อหลีกเลี่ยงข้อผิดพลาด 403</p>
+        </div>
+
+        <div class="player-card">
+            <div class="video-wrapper">
+                <video id="video" controls></video>
+
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="spinner"></div>
+                    <div class="loading-text">กำลังโหลดสตรีม...</div>
+                </div>
+
+                <div class="error-overlay" id="errorOverlay">
+                    <div class="error-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="error-title">ไม่สามารถเล่นสตรีมได้</div>
+                    <div class="error-desc" id="errorDesc">
+                        เซิร์ฟเวอร์ปฏิเสธการเข้าถึง (403 Forbidden)<br>
+                        ลองใช้วิธีแก้ไขด้านล่าง
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-bar">
+                <button class="btn primary" id="playBtn" onclick="togglePlay()">
+                    <i class="fas fa-play"></i> เล่น
+                </button>
+                <button class="btn" onclick="reloadStream()">
+                    <i class="fas fa-redo"></i> โหลดใหม่
+                </button>
+                <button class="btn" onclick="toggleFullscreen()">
+                    <i class="fas fa-expand"></i> เต็มจอ
+                </button>
+                <div class="quality-selector" id="qualitySelector"></div>
+                <div class="status-badge">
+                    <div class="status-dot offline" id="statusDot"></div>
+                    <span id="statusText">ออฟไลน์</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3><i class="fas fa-link"></i> URL สตรีม</h3>
+            <div class="url-box" id="urlBox">
+                http://v3tv.live:80/play/live.php?mac=00:1A:79:D0:30:8F&stream=1776200&extension=m3u8
+            </div>
+
+            <h3 style="margin-top: 20px;"><i class="fas fa-shield-alt"></i> วิธีแก้ปัญหา 403 Forbidden</h3>
+            <div class="tips">
+                <div class="tip-item">
+                    <i class="fas fa-globe"></i>
+                    <div>
+                        <strong>ใช้ Proxy / CORS Anywhere</strong><br>
+                        เปิดเว็บ <a href="https://corsproxy.io/" target="_blank" style="color:#00d4ff;">corsproxy.io</a> แล้วใส่ URL สตรีม หรือใช้ extension "Allow CORS" บน Chrome
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <i class="fas fa-user-secret"></i>
+                    <div>
+                        <strong>ตั้งค่า Referer & User-Agent</strong><br>
+                        บางเซิร์ฟเวอร์ตรวจสอบ Referer ให้ติดตั้ง extension "ModHeader" เพื่อปลอมแปลง headers
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <i class="fas fa-desktop"></i>
+                    <div>
+                        <strong>ใช้ VLC Media Player</strong><br>
+                        คัดลอก URL ไปเปิดใน VLC (Media → Open Network Stream) ซึ่งไม่มีข้อจำกัด CORS
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <i class="fas fa-code"></i>
+                    <div>
+                        <strong>ใช้ Python Proxy</strong><br>
+                        รัน proxy ง่ายๆ ด้วย Python: <code style="background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;">python -m http.server 8080</code> แล้วตั้งค่า headers ที่ต้องการ
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const errorOverlay = document.getElementById('errorOverlay');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const playBtn = document.getElementById('playBtn');
+        const qualitySelector = document.getElementById('qualitySelector');
+
+        const STREAM_URL = 'http://v3tv.live:80/play/live.php?mac=00:1A:79:D0:30:8F&stream=1776200&extension=m3u8';
+        let hls = null;
+        let isPlaying = false;
+
+        function setStatus(status) {
+            statusDot.className = 'status-dot';
+            if (status === 'online') {
+                statusDot.classList.add('online');
+                statusText.textContent = 'ออนไลน์';
+            } else if (status === 'loading') {
+                statusDot.classList.add('loading');
+                statusText.textContent = 'กำลังโหลด...';
+            } else {
+                statusDot.classList.add('offline');
+                statusText.textContent = 'ออฟไลน์';
+            }
+        }
+
+        function initPlayer() {
+            if (Hls.isSupported()) {
+                if (hls) {
+                    hls.destroy();
+                }
+
+                hls = new Hls({
+                    debug: false,
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90,
+                    xhrSetup: function(xhr, url) {
+                        // พยายามตั้งค่า headers เพื่อหลีกเลี่ยง 403
+                        xhr.setRequestHeader('Referer', 'http://v3tv.live/');
+                        xhr.setRequestHeader('Origin', 'http://v3tv.live:80/play/live.php');
+                    }
+                });
+
+                hls.loadSource(STREAM_URL);
+                hls.attachMedia(video);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
+                    loadingOverlay.classList.add('hidden');
+                    errorOverlay.classList.remove('show');
+                    setStatus('online');
+                    video.play().catch(e => console.log('Autoplay prevented:', e));
+                    isPlaying = true;
+                    updatePlayButton();
+
+                    // สร้างปุ่มเลือกความละเอียด
+                    buildQualitySelector(data.levels);
+                });
+
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    console.error('HLS Error:', data);
+                    if (data.fatal) {
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                if (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR ||
+                                    data.details === Hls.ErrorDetails.LEVEL_LOAD_ERROR) {
+                                    showError('403 Forbidden - เซิร์ฟเวอร์ปฏิเสธการเข้าถึง', 
+                                        'เซิร์ฟเวอร์ต้องการ Headers พิเศษ (Referer/User-Agent)<br>ลองใช้วิธีแก้ไขด้านล่าง');
+                                } else {
+                                    showError('ข้อผิดพลาดเครือข่าย', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+                                }
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                showError('ข้อผิดพลาด', 'ไม่สามารถเล่นสตรีมได้');
+                                break;
+                        }
+                    }
+                });
+
+                hls.on(Hls.Events.BUFFER_APPENDING, function() {
+                    setStatus('loading');
+                });
+
+                hls.on(Hls.Events.FRAG_BUFFERED, function() {
+                    setStatus('online');
+                });
+
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Safari native HLS
+                video.src = STREAM_URL;
+                video.addEventListener('loadedmetadata', function() {
+                    loadingOverlay.classList.add('hidden');
+                    setStatus('online');
+                    video.play();
+                    isPlaying = true;
+                    updatePlayButton();
+                });
+                video.addEventListener('error', function() {
+                    showError('ไม่สามารถเล่นสตรีมได้', 'เบราว์เซอร์ไม่รองรับหรือเซิร์ฟเวอร์ปฏิเสธการเข้าถึง');
+                });
+            } else {
+                showError('เบราว์เซอร์ไม่รองรับ', 'กรุณาใช้ Chrome, Firefox, หรือ Safari รุ่นล่าสุด');
+            }
+        }
+
+        function buildQualitySelector(levels) {
+            qualitySelector.innerHTML = '';
+            if (!levels || levels.length <= 1) return;
+
+            const autoBtn = document.createElement('button');
+            autoBtn.className = 'quality-btn active';
+            autoBtn.textContent = 'AUTO';
+            autoBtn.onclick = () => {
+                hls.currentLevel = -1;
+                document.querySelectorAll('.quality-btn').forEach(b => b.classList.remove('active'));
+                autoBtn.classList.add('active');
+            };
+            qualitySelector.appendChild(autoBtn);
+
+            levels.forEach((level, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'quality-btn';
+                const height = level.height || level.attrs?.RESOLUTION?.split('x')[1] || '?';
+                btn.textContent = height + 'p';
+                btn.onclick = () => {
+                    hls.currentLevel = index;
+                    document.querySelectorAll('.quality-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                };
+                qualitySelector.appendChild(btn);
+            });
+        }
+
+        function showError(title, desc) {
+            loadingOverlay.classList.add('hidden');
+            document.getElementById('errorDesc').innerHTML = desc;
+            document.querySelector('.error-title').textContent = title;
+            errorOverlay.classList.add('show');
+            setStatus('offline');
+            isPlaying = false;
+            updatePlayButton();
+        }
+
+        function togglePlay() {
+            if (video.paused) {
+                video.play();
+                isPlaying = true;
+            } else {
+                video.pause();
+                isPlaying = false;
+            }
+            updatePlayButton();
+        }
+
+        function updatePlayButton() {
+            if (isPlaying) {
+                playBtn.innerHTML = '<i class="fas fa-pause"></i> หยุด';
+            } else {
+                playBtn.innerHTML = '<i class="fas fa-play"></i> เล่น';
+            }
+        }
+
+        function reloadStream() {
+            errorOverlay.classList.remove('show');
+            loadingOverlay.classList.remove('hidden');
+            setStatus('loading');
+            initPlayer();
+        }
+
+        function toggleFullscreen() {
+            if (video.requestFullscreen) {
+                video.requestFullscreen();
+            } else if (video.webkitRequestFullscreen) {
+                video.webkitRequestFullscreen();
+            } else if (video.msRequestFullscreen) {
+                video.msRequestFullscreen();
+            }
+        }
+
+        video.addEventListener('play', () => { isPlaying = true; updatePlayButton(); });
+        video.addEventListener('pause', () => { isPlaying = false; updatePlayButton(); });
+
+        // เริ่มต้นโหลดสตรีมอัตโนมัติ
+        window.addEventListener('DOMContentLoaded', () => {
+            setStatus('loading');
+            initPlayer();
+        });
+    </script>
+</body>
+</html>
