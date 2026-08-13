@@ -370,7 +370,7 @@
         <div class="info-section">
             <h3><i class="fas fa-link"></i> URL สตรีม</h3>
             <div class="url-box" id="urlBox">
-                http://v3tv.live:80/play/live.php?mac=00:1A:79:D0:30:8F&stream=1776200&extension=m3u8
+                https://raw.githubusercontent.com/Netibox/MOV69/refs/heads/main/mov/server1-sport-tsp2.m3u8
             </div>
 
             <h3 style="margin-top: 20px;"><i class="fas fa-shield-alt"></i> วิธีแก้ปัญหา 403 Forbidden</h3>
@@ -416,7 +416,7 @@
         const playBtn = document.getElementById('playBtn');
         const qualitySelector = document.getElementById('qualitySelector');
 
-        const STREAM_URL = 'http://v3tv.live:80/play/live.php?mac=00:1A:79:D0:30:8F&stream=1776200&extension=m3u8';
+        const STREAM_URL = 'https://raw.githubusercontent.com/Netibox/MOV69/refs/heads/main/mov/server1-sport-tsp2.m3u8';
         let hls = null;
         let isPlaying = false;
 
@@ -447,8 +447,8 @@
                     backBufferLength: 90,
                     xhrSetup: function(xhr, url) {
                         // พยายามตั้งค่า headers เพื่อหลีกเลี่ยง 403
-                        xhr.setRequestHeader('Referer', 'http://v3tv.live/');
-                        xhr.setRequestHeader('Origin', 'http://v3tv.live:80/play/live.php');
+                        xhr.setRequestHeader('Referer', 'https://github.com/');
+                        xhr.setRequestHeader('Origin', 'http://dootvz.ddns.net');
                     }
                 });
 
